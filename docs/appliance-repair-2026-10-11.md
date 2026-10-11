@@ -36,6 +36,10 @@ The old stopped npm entry was removed. The saved dump contains only API and
 NFC, both online, and the existing boot service is enabled. A targeted SIGTERM
 test restarted NFC (3923 → 3992), reattached the reader and left API PID 3922
 unchanged. No new pcscd crash was logged during the final tests.
+A user-initiated reboot restored both processes automatically (new PIDs
+443/444, zero restarts), with the reader attached and TV state endpoint 200.
+No TV playback was requested. PM2 IDs are assigned afresh after resurrection;
+do not assume the original numeric IDs persist.
 
 The API artifact is checked into the app's vendor directory with its source
 commit in the filename. The parent npm 7 lock and API shrinkwrap record the
@@ -65,6 +69,7 @@ API commits created, oldest first:
 - 9a059dd — lazy Polly SDK load
 - 783a1c6 — restored dependency shrinkwrap
 - b655cf0 — exact runtime pins, including npm parent-lock reuse handling
+- b719ecc — complete evidence and measurements report
 
 Pi app commits created:
 
@@ -74,6 +79,7 @@ Pi app commits created:
 - 8f1b214 — final pinned artifact, measured playback changes and direct startup
 - d33d469 — documentation and private formatting protection
 - e562c10 — final startup recovery and idle measurements
+- ee9c890 — successful reboot autostart timeline
 
 Documentation validation updates may follow these commits. The API bundle was
 copied to the protected Pi backup. No private settings were committed.
@@ -127,7 +133,8 @@ Do not run npm ci on the live working tree; validate a fresh replacement first.
 API completion and Sonos PLAYING/advancing elapsed time are software evidence,
 not audible-onset timing. A user confirmed two Black Move scans audibly worked.
 A controlled physical before/after and controlled cold power-on remain separate
-validation requirements. Boot wall-clock time jumped; use monotonic journals.
+validation requirements. A reboot/autostart test passed, as detailed below.
+Boot wall-clock time jumped; use monotonic journals.
 Original full-wrapper startup suffered a reader crash before becoming usable,
 so it provides no clean startup baseline. Its wrapper RSS snapshot was about
 139 MiB before actual API work, not an idle-memory baseline. Earlier API-only
@@ -138,11 +145,37 @@ and about 0.15% CPU in PM2. Their RSS was 42.7, 36.5 and 18.0 MiB respectively;
 summed RSS double-counts shared pages. The system reported 65 MiB available RAM
 and 28 MiB swap used. This is a final idle snapshot, not a measured improvement.
 
+### Validated reboot timeline
+
+| Seconds since kernel boot | Event |
+| --- | --- |
+| 6.590 | ACS USB enumerated |
+| 32.258 | PM2 unit starts |
+| 45.931 | Wi-Fi carrier |
+| 55.377 | DHCP address acquired |
+| 71.339 | PM2 daemon ready |
+| 73.464 / 73.866 | Two direct Node processes restored |
+| 83.112 | PM2 service active |
+| 96.90 | NFC Node readiness gate starts |
+| about 128.75 | API listener starts |
+| 146.63 | Configured Sonos room ready |
+| 149.732 | PC/SC daemon starts |
+| about 151.5 | Reader attached, appliance ready to scan |
+
+Systemd: 5.725 s kernel + 78.540 s userspace = 84.266 s. Service durations:
+PM2 50.854 s, dhcpcd 30.082 s, random seed 17.788 s, SD device 10.551 s;
+overlap means these cannot be summed. The gate waited 49.734 s. System target
+readiness precedes appliance readiness by about 67 s. Network is available well
+before the API listener; process loading and discovery dominate the later phase.
+Earlier reported five-minute readiness has no controlled baseline. This result
+is a user-initiated reboot, not a cold power-on or a guarantee of every boot.
+
 ## K–M. Fragility and hardware
 
 Reader USB/driver stability is unresolved. Zero voltage throttle flags do not
 rule out cable, power or USB faults. No passwordless sudo was available, so
-root-only driver/service changes and a shell-initiated reboot were not attempted.
+I did not perform root-only driver/service changes or initiate a reboot myself;
+the user ran the authorized sudo reboot used for the successful autostart test.
 No modern dependency or Node upgrade is bundled into this repair. Old Node 12
 and old packages remain a security/maintenance risk; keep the unauthenticated
 API on a trusted LAN and plan a separately scoped migration.
@@ -155,3 +188,7 @@ for example a Pi 4-class 2 GiB device, would materially improve startup and
 memory headroom. It would not fix invalid SOAP requests, manual TV input
 switches, or guarantee reader USB/driver stability. Native modules need a new
 architecture-specific build; runtime migration requires separate approval.
+
+Primary references: [UPnP AVTransport specification](https://www.upnp.org/specs/av/UPnP-av-AVTransport-v3-Service.pdf),
+[Node release status](https://nodejs.org/en/about/previous-releases), and
+[Pi 4 specifications](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/specifications/).
