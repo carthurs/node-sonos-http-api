@@ -30,8 +30,11 @@ that deprecation alone caused malformed requests or a latency improvement.
 ## Reproduction
 
 Pin the NFC app to an exact commit or a checked-in API tarball, never a moving
-Git branch. Keep its npm 7 lockfile: a dependency's lockfile does not constrain
-the parent app's dependency resolution. Use Node 12.22.5 / npm 7.5.2 on ARMv6.
+Git branch. The published npm-shrinkwrap.json freezes the API's audited restored
+dependency tree, including AWS 2.1046.0 and HTML entities 1.2.1. Its development
+lockfile is kept identical. Keep the app's npm 7 lockfile too: an ordinary
+dependency package-lock.json does not constrain the parent app's resolution.
+Use Node 12.22.5 / npm 7.5.2 on ARMv6.
 Preserve nfc-pcsc's native build and do not copy native modules from x86.
 
 Use `npm ci` only on a fresh checkout or a separately prepared replacement
@@ -40,9 +43,28 @@ installation, patch verification, Sonos discovery, playback and reader attach
 before replacing deployment. Do not use an unrestricted npm update/install to
 repair an interrupted install. Keep local usersettings.json private.
 
-The original API lockfile is version 1; the NFC app's version 2 lockfile is the
-authority for the deployed transitive versions. A fresh install requires the
-registry/GitHub archives and ARMv6 native compilation prerequisites.
+Both locks are version 2. A fresh install requires the registry/GitHub archives
+and ARMv6 native compilation prerequisites. Never regenerate the shrinkwrap
+against latest registry versions on the Pi.
+
+## Spotify queue replacement and startup
+
+`/ROOM/spotify/replace/spotify:album:ID` activates the coordinator's queue,
+sets repeat and shuffle off together, turns crossfade off, clears the queue,
+adds the requested URI, seeks to the returned queue position, and plays.
+The existing `spotify/now` semantics are retained for other callers.
+Queue mode requests while optical TV input is active returned SOAP fault 712
+on the appliance. Activating the queue first avoids that unsupported operation.
+Fault XML is logged and returned for diagnosis; failures are not converted to
+success. Competing manual or automatic input switches can still interrupt play.
+
+`playmode/normal` sets repeat and shuffle together without relying on event
+state catching up between two separate calls. Other service types keep their
+existing queue-clearing and crossfade tolerance. The inter-record wait remains.
+
+AWS SDK loading took 15.8 seconds and increased RSS by 9.3 MB in isolation on
+the Pi. Polly now loads it only when generating an uncached TTS request.
+NFC-only startup therefore avoids that unused work.
 
 ## Validation boundaries
 
