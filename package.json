@@ -4,12 +4,13 @@
   "description": "A simple node app for controlling a Sonos system with basic HTTP requests",
   "scripts": {
     "start": "node server.js",
-    "lint": "eslint lib"
+    "lint": "eslint lib",
+    "postinstall": "node scripts/patch-sonos-discovery.js"
   },
   "author": "Jimmy Shimizu <jimmy@shimizu.se>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jishi/node-sonos-http-api.git"
+    "url": "https://github.com/carthurs/node-sonos-http-api.git"
   },
   "dependencies": {
     "anesidora": "^1.2.0",
