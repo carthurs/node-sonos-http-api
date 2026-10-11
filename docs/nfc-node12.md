@@ -30,11 +30,18 @@ that deprecation alone caused malformed requests or a latency improvement.
 ## Reproduction
 
 Pin the NFC app to an exact commit or a checked-in API tarball, never a moving
-Git branch. The published npm-shrinkwrap.json freezes the API's audited restored
+Git branch. Direct runtime dependencies are pinned to their actual restored
+versions. The published npm-shrinkwrap.json records the API's audited restored
 dependency tree, including AWS 2.1046.0 and HTML entities 1.2.1. Its development
 lockfile is kept identical. Keep the app's npm 7 lockfile too: an ordinary
 dependency package-lock.json does not constrain the parent app's resolution.
 Use Node 12.22.5 / npm 7.5.2 on ARMv6.
+
+npm 7 installing a local tarball with an existing parent lock did not override
+the parent's older AWS/HTML-entities resolutions merely because a shrinkwrap
+was packaged. The exact dependency pins and regenerated parent lock close that
+gap. Use a commit-named archive to avoid reusing cached metadata for a replaced
+tarball at the same path. Verify actual require.resolve versions after install.
 Preserve nfc-pcsc's native build and do not copy native modules from x86.
 
 Use `npm ci` only on a fresh checkout or a separately prepared replacement
